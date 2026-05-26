@@ -4,7 +4,7 @@ version = "1.0.5"
 authors = ["Roland Ruckerbauer <roland.rucky@gmail.com>"]
 description = "Low level bindings to the enet C library"
 license = "MIT"
-repository = "https://github.com/ruabmbua/enet-sys"
+repository = "https://github.com/LinkProfitSG/enet-sys"
 links = "enet"
 build = "build.rs"
 
