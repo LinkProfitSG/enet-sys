@@ -1,12 +1,44 @@
 extern crate bindgen;
 extern crate cmake;
 
-use cmake::Config;
+use std::path::Path;
 use std::env;
-use std::path::PathBuf;
 
 fn main() {
     let target = env::var("TARGET").unwrap();
+    let enet_dir = Path::new("vendor/enet");
+
+    println!("cargo:return-if-changed={}", enet_dir.display());
+
+    let mut build = cc::Build::new();
+    build.include(enet_dir.join("include"))
+        .warnings(false)
+        .define("ENET_STATIC", None);
+
+    let core_files = [
+        "address.c",
+        "callbacks.c",
+        "compress.c",
+        "host.c",
+        "list.c",
+        "packet.c",
+        "peer.c",
+        "protocol.c",
+    ];
+
+    for file in core_files { build.file(enet_dir.join(file)); }
+
+    if target.contains("windows") {
+        build.file(enet_dir.join("win32.c"));
+        println!("cargo:rustc-link-lib=dylib=winmm");
+        build.define("WIN32", None);
+    }
+    else {
+        build.file(enet_dir.join("unix.c"));
+    }
+
+    build.compile("enet");
+
     let bindings = bindgen::Builder::default()
         .clang_arg("-Ivendor/enet/include/")
         .header("wrapper.h")
@@ -17,19 +49,7 @@ fn main() {
         .generate()
         .expect("Unable to generate bindings");
 
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
+    let out_path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
 
-    let dst = Config::new("vendor/enet").build();
-
-    eprintln!("LUL: {}", dst.display());
-
-    if target.contains("windows") {
-        println!("cargo:rustc-link-lib=dylib=winmm");
-    }
-
-    println!("cargo:rustc-link-search=native={}/lib/static", dst.display());
-    println!("cargo:rustc-link-lib=static=enet");
+    bindings.write_to_file(out_path.join("bindings.rs")).expect("Coulnd't create bindings!");
 }
